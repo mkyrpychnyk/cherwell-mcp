@@ -1,0 +1,46 @@
+{
+  "name": "cherwell-mcp",
+  "version": "0.1.0",
+  "description": "MCP server (stdio) for the Cherwell CSM REST API — CRUD operations on business objects",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "cherwell-mcp": "dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "watch": "tsc --watch",
+    "start": "node dist/index.js",
+    "prepublishOnly": "npm run build"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "mcp-server",
+    "cherwell",
+    "csm",
+    "itsm"
+  ],
+  "author": "Maksym Kyrpychnyk <kyrpychnyk.maksym@gmail.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/mkyrpychnyk/cherwell-mcp.git"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/server": "^2.1.0",
+    "zod": "^4.6.5"
+  },
+  "devDependencies": {
+    "@types/node": "^22.10.0",
+    "typescript": "^5.7.0"
+  }
+}
