@@ -37,6 +37,10 @@
     "type": "git",
     "url": "git+https://github.com/mkyrpychnyk/cherwell-mcp.git"
   },
+  "homepage": "https://github.com/mkyrpychnyk/cherwell-mcp#readme",
+  "bugs": {
+    "url": "https://github.com/mkyrpychnyk/cherwell-mcp/issues"
+  },
   "dependencies": {
     "@modelcontextprotocol/server": "^2.1.0",
     "zod": "^4.6.5"
