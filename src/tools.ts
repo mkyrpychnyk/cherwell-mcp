@@ -1,6 +1,7 @@
 import type { McpServer } from "@modelcontextprotocol/server";
 import { z } from "zod";
 import type { CherwellApi } from "./api.js";
+import { compactRecord, compactSearchResult, compactSummaries, compactTemplate } from "./format.js";
 
 const businessObject = z
   .string()
@@ -10,6 +11,13 @@ const businessObject = z
 const recId = z.string().min(1).describe("Internal record ID (busObRecId) of the record.");
 
 const publicId = z.string().min(1).describe("Public ID of the record (e.g. incident number).");
+
+const raw = z
+  .boolean()
+  .default(false)
+  .describe(
+    "Return the untouched Cherwell response instead of the compact form. Verbose — a single record can exceed 100 KB."
+  );
 
 const filterSchema = z.object({
   fieldName: z.string().min(1).describe('Field name or display name, e.g. "Status".'),
@@ -40,11 +48,13 @@ export function registerTools(server: McpServer, api: CherwellApi): void {
           .enum(["All", "Major", "Supporting", "Lookup", "Groups"])
           .default("Major")
           .describe('Which category of business objects to list. "Major" covers Incident, Problem, Change, etc.'),
+        raw,
       }),
     },
-    async ({ type }) => {
+    async ({ type, raw: rawOutput }) => {
       try {
-        return ok(await api.getSummaries(type));
+        const summaries = await api.getSummaries(type);
+        return ok(rawOutput ? summaries : compactSummaries(summaries));
       } catch (error) {
         return fail(error);
       }
@@ -63,12 +73,14 @@ export function registerTools(server: McpServer, api: CherwellApi): void {
           .boolean()
           .default(false)
           .describe("If true, return only the fields required to create a record."),
+        raw,
       }),
     },
-    async ({ businessObject: busOb, requiredOnly }) => {
+    async ({ businessObject: busOb, requiredOnly, raw: rawOutput }) => {
       try {
         const busObId = await api.resolveBusObId(busOb);
-        return ok(await api.getTemplate(busObId, !requiredOnly));
+        const template = await api.getTemplate(busObId, !requiredOnly);
+        return ok(rawOutput ? template : compactTemplate(template));
       } catch (error) {
         return fail(error);
       }
@@ -79,21 +91,28 @@ export function registerTools(server: McpServer, api: CherwellApi): void {
     "get_business_object",
     {
       description:
-        "Read a single business object record with all its field values, addressed by record ID (busObRecId) " +
-        "or public ID (e.g. incident number). Provide exactly one of recId / publicId.",
+        "Read a single business object record with its field values, addressed by record ID (busObRecId) " +
+        "or public ID (e.g. incident number). Provide exactly one of recId / publicId. Records can have " +
+        "hundreds of fields — pass `fields` to keep the response small.",
       inputSchema: z.object({
         businessObject,
         recId: recId.optional(),
         publicId: publicId.optional(),
+        fields: z
+          .array(z.string())
+          .optional()
+          .describe("Field names to return. Omit to return every field on the record."),
+        raw,
       }),
     },
-    async ({ businessObject: busOb, recId: rec, publicId: pub }) => {
+    async ({ businessObject: busOb, recId: rec, publicId: pub, fields, raw: rawOutput }) => {
       if (!rec === !pub) {
         return fail(new Error("Provide exactly one of recId or publicId."));
       }
       try {
         const busObId = await api.resolveBusObId(busOb);
-        return ok(await api.getBusinessObject(busObId, { recId: rec, publicId: pub }));
+        const record = await api.getBusinessObject(busObId, { recId: rec, publicId: pub });
+        return ok(rawOutput ? record : compactRecord(record, fields));
       } catch (error) {
         return fail(error);
       }
@@ -194,12 +213,14 @@ export function registerTools(server: McpServer, api: CherwellApi): void {
           .describe("Field names to include in results. Omit to return all fields."),
         pageNumber: z.number().int().min(1).default(1),
         pageSize: z.number().int().min(1).max(500).default(50),
+        raw,
       }),
     },
-    async ({ businessObject: busOb, filters, fields, pageNumber, pageSize }) => {
+    async ({ businessObject: busOb, filters, fields, pageNumber, pageSize, raw: rawOutput }) => {
       try {
         const busObId = await api.resolveBusObId(busOb);
-        return ok(await api.search(busObId, filters, { fields, pageNumber, pageSize }));
+        const result = await api.search(busObId, filters, { fields, pageNumber, pageSize });
+        return ok(rawOutput ? result : compactSearchResult(result));
       } catch (error) {
         return fail(error);
       }

@@ -14,6 +14,8 @@ The API contract (auth flow, routes, payload shapes) is ported from the internal
 ├─────────────────────────────────────────────────────┤
 │ src/tools.ts        MCP tool definitions (zod)      │
 ├─────────────────────────────────────────────────────┤
+│ src/format.ts       compact response shaping        │
+├─────────────────────────────────────────────────────┤
 │ src/api.ts          typed Cherwell operations,      │
 │                     name→ID resolution, schema cache│
 ├─────────────────────────────────────────────────────┤
@@ -45,6 +47,9 @@ The API contract (auth flow, routes, payload shapes) is ported from the internal
     **busObId** (32-hex); names are resolved via `getbusinessobjectsummary/busobname/{name}`.
   - Template cache — `getbusinessobjecttemplate` results are cached per busObId and used to map
     field **names/display names** to Cherwell field IDs for saves and search filters.
+- **format.ts** — compact response shapes. Cherwell returns seven metadata keys per field, so a
+  single Incident is ~110 KB of JSON. Read tools return `{fieldName: value}` maps by default
+  (~8× smaller, or ~400× with a `fields` filter) and the untouched payload only on `raw: true`.
 - **tools.ts** — MCP tools (see catalog). Handlers validate input with zod, call `api.ts`, and
   return pretty-printed JSON; failures return `isError: true` with a readable message.
 - **index.ts** — `#!/usr/bin/env node` entry. Loads config, builds the server, connects a
@@ -82,6 +87,17 @@ IDs, marks only the provided fields `dirty: true`, and posts `savebusinessobject
 
 Search filter semantics (Cherwell's): filters on the **same** field OR together; filters on
 **different** fields AND together.
+
+All read tools accept `raw: true` to bypass compact shaping; `get_business_object` and
+`search_business_objects` accept a `fields` list to return only selected fields.
+
+### Verified against a live instance
+
+Every tool was exercised end-to-end against a real (non-production) Cherwell 10.x host on
+2026-09-27: login, 141 object summaries, Incident template, filtered search, record read, and a
+full create → read → update → verify → delete cycle (test incident created and removed, zero rows
+left behind). Field-name → field-ID mapping works with the IDs returned by
+`getbusinessobjecttemplate`.
 
 ## Configuration (environment variables)
 

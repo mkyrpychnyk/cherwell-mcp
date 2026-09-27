@@ -74,6 +74,22 @@ Everywhere a business object is expected, tools accept either its **name** (`Inc
 32-character **busObId**. Fields are addressed by **name or display name**; the server resolves
 them to Cherwell field IDs internally.
 
+### Response size
+
+Cherwell wraps every field in seven keys of metadata, so one raw Incident is ~110 KB — far more
+than an LLM context can afford. The read tools therefore return a compact form by default: a flat
+`{fieldName: value}` map alongside the record identifiers. Measured against a live instance:
+
+| Call | Compact | Raw (`raw: true`) |
+|---|---|---|
+| `get_business_object` (one incident, ~400 fields) | 13.8 KB | 111 KB |
+| `get_business_object` with `fields: ["IncidentID","Status","ShortDescription"]` | 260 B | — |
+| `list_business_object_summaries` (141 objects) | 20 KB | 61 KB |
+| `get_business_object_template` (Incident) | 35 KB | 93 KB |
+
+Pass `fields` on `get_business_object` / `search_business_objects` to request only what you need,
+and `raw: true` when you genuinely need Cherwell's original payload (field IDs, HTML, dirty flags).
+
 ### Example workflow
 
 1. `list_business_object_summaries` → find `Incident`

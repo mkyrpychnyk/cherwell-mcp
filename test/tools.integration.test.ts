@@ -125,6 +125,54 @@ describe("cherwell-mcp tools over an in-memory MCP connection", () => {
     expect(result.content[0].text).toContain("Required field Priority is missing");
   });
 
+  it("returns compact records by default and the raw shape on request", async () => {
+    const rawRecord = {
+      busObId: INCIDENT_ID,
+      busObPublicId: "867045",
+      busObRecId: "rec-1",
+      fields: [
+        {
+          fieldId: `BO:${INCIDENT_ID},FI:desc1`,
+          fullFieldId: null,
+          html: null,
+          dirty: false,
+          name: "Description",
+          displayName: "Description",
+          value: "Printer is down",
+        },
+      ],
+    };
+    fetchMock.queueToken();
+    fetchMock.queueJson(rawRecord);
+    fetchMock.queueJson(rawRecord); // token is cached, so the second call goes straight out
+
+    const compact = await callTool("get_business_object", { businessObject: INCIDENT_ID, publicId: "867045" });
+    expect(JSON.parse(compact.content[0].text)).toEqual({
+      busObId: INCIDENT_ID,
+      busObPublicId: "867045",
+      busObRecId: "rec-1",
+      fields: { Description: "Printer is down" },
+    });
+
+    const verbose = await callTool("get_business_object", {
+      businessObject: INCIDENT_ID,
+      publicId: "867045",
+      raw: true,
+    });
+    expect(JSON.parse(verbose.content[0].text).fields[0].fieldId).toBe(`BO:${INCIDENT_ID},FI:desc1`);
+  });
+
+  it("trims the summaries list to identity fields by default", async () => {
+    fetchMock.queueToken();
+    fetchMock.queueJson([{ ...incidentSummary[0], major: true, lookup: false, group: false, states: "" }]);
+
+    const result = await callTool("list_business_object_summaries", { type: "Major" });
+
+    expect(JSON.parse(result.content[0].text)).toEqual([
+      { busObId: INCIDENT_ID, name: "Incident", displayName: "Incident" },
+    ]);
+  });
+
   it("surfaces auth failures as tool errors", async () => {
     fetchMock.queueJson({ error_description: "wrong password" }, 400);
 
